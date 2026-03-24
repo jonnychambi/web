@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Global · GDP, Esperanza de Vida & VIH</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #080c14;
+    --surface: #0d1420;
+    --surface2: #121a28;
+    --border: rgba(99,179,237,0.12);
+    --accent: #63b3ed;
+    --accent2: #f6ad55;
+    --accent3: #68d391;
+    --accent4: #fc8181;
+    --text: #e2e8f0;
+    --muted: #718096;
+    --glow: rgba(99,179,237,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    padding: 0;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: linear-gradient(135deg, #0a1628 0%, #0d1f3c 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 2rem 3rem;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(99,179,237,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .header-top {
+    display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+  }
+  .header-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+  }
+  .header-title span { color: var(--accent); }
+  .header-sub {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 0.4rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .header-stats {
+    display: flex; gap: 2rem; flex-wrap: wrap;
+  }
+  .hstat {
+    text-align: right;
+  }
+  .hstat-val {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .hstat-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  /* FILTERS */
+  .filters {
+    display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;
+    padding: 1.2rem 3rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .filter-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  .filter-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 0.35rem 0.9rem;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+  input[type=range] {
+    accent-color: var(--accent);
+    width: 160px;
+  }
+  .range-val {
+    font-size: 0.72rem;
+    color: var(--accent);
+    min-width: 60px;
+  }
+  .search-wrap {
+    margin-left: auto;
+  }
+  .search-wrap input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.35rem 0.9rem;
+    border-radius: 4px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.72rem;
+    outline: none;
+    width: 200px;
+    transition: border 0.2s;
+  }
+  .search-wrap input:focus { border-color: var(--accent); }
+
+  /* MAIN GRID */
+  main {
+    padding: 2rem 3rem;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 1.25rem;
+  }
+
+  /* KPI CARDS */
+  .kpi-row {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.25rem;
+  }
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.4rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+  .kpi-card:hover { border-color: rgba(99,179,237,0.4); }
+  .kpi-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-accent, var(--accent));
+  }
+  .kpi-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--card-accent, var(--accent));
+  }
+  .kpi-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 0.25rem;
+  }
+  .kpi-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-top: 0.6rem;
+  }
+
+  /* CHART CARDS */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    transition: border-color 0.3s;
+    position: relative;
+  }
+  .chart-card:hover { border-color: rgba(99,179,237,0.3); }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text);
+  }
+  .card-desc {
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    margin-top: -0.5rem;
+  }
+  .chart-wrap {
+    position: relative;
+    flex: 1;
+  }
+  .chart-wrap canvas { width: 100% !important; }
+
+  /* Layout spans */
+  .col-8  { grid-column: span 8; }
+  .col-4  { grid-column: span 4; }
+  .col-6  { grid-column: span 6; }
+  .col-7  { grid-column: span 7; }
+  .col-5  { grid-column: span 5; }
+  .col-12 { grid-column: 1 / -1; }
+
+  /* TABLE */
+  .table-wrap {
+    overflow-y: auto;
+    max-height: 340px;
+  }
+  .table-wrap::-webkit-scrollbar { width: 4px; }
+  .table-wrap::-webkit-scrollbar-track { background: var(--surface2); }
+  .table-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.72rem; }
+  thead th {
+    background: var(--surface2);
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-size: 0.62rem;
+    padding: 0.6rem 0.8rem;
+    position: sticky; top: 0;
+    text-align: left;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  thead th:hover { color: var(--accent); }
+  tbody tr {
+    border-bottom: 1px solid rgba(99,179,237,0.05);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: rgba(99,179,237,0.04); }
+  td { padding: 0.5rem 0.8rem; white-space: nowrap; }
+  .rank { color: var(--muted); font-size: 0.65rem; }
+  .country-name { font-weight: 500; }
+  .bar-cell { width: 80px; }
+  .mini-bar {
+    height: 4px;
+    background: var(--accent);
+    border-radius: 2px;
+    opacity: 0.7;
+  }
+  .mini-bar.hiv { background: var(--accent4); }
+  .mini-bar.life { background: var(--accent3); }
+  .corr-badge {
+    display: inline-block;
+    font-size: 0.65rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+  }
+  .corr-pos { background: rgba(104,211,145,0.15); color: var(--accent3); }
+  .corr-neg { background: rgba(252,129,129,0.15); color: var(--accent4); }
+
+  /* TOOLTIP */
+  #tooltip {
+    position: fixed;
+    background: #1a2333;
+    border: 1px solid var(--accent);
+    padding: 0.6rem 0.9rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 1000;
+    max-width: 220px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  #tooltip.show { opacity: 1; }
+  #tooltip .tt-name { font-family: 'Syne', sans-serif; font-weight: 700; margin-bottom: 0.3rem; color: var(--accent); }
+  #tooltip .tt-row { display: flex; justify-content: space-between; gap: 1rem; margin: 0.1rem 0; }
+  #tooltip .tt-key { color: var(--muted); }
+  #tooltip .tt-val { font-weight: 500; }
+
+  /* CORRELATION MATRIX */
+  .corr-matrix {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  .corr-cell {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+  .corr-cell .pair { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.3rem; }
+  .corr-cell .value { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.3rem; }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.65rem;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    letter-spacing: 1px;
+  }
+
+  @media (max-width: 900px) {
+    main { padding: 1rem; gap: 1rem; }
+    .col-8, .col-4, .col-6, .col-7, .col-5 { grid-column: 1 / -1; }
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    header, .filters { padding: 1.2rem; }
+    .header-stats { gap: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="tooltip">
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-row"><span class="tt-key">GDP per cápita</span><span class="tt-val" id="tt-gdp"></span></div>
+  <div class="tt-row"><span class="tt-key">Esperanza de vida</span><span class="tt-val" id="tt-life"></span></div>
+  <div class="tt-row"><span class="tt-key">Prevalencia VIH (%)</span><span class="tt-val" id="tt-hiv"></span></div>
+</div>
+
+<header>
+  <div class="header-top">
+    <div>
+      <div class="header-title">Global <span>GDP</span> & Bienestar</div>
+      <div class="header-sub">147 países · Indicadores económicos y de salud</div>
+    </div>
+    <div class="header-stats">
+      <div class="hstat">
+        <div class="hstat-val" id="h-countries">147</div>
+        <div class="hstat-label">Países</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-val">r = 0.635</div>
+        <div class="hstat-label">GDP ↔ Vida</div>
+      </div>
+      <div class="hstat">
+        <div class="hstat-val">r = −0.566</div>
+        <div class="hstat-label">VIH ↔ Vida</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="filters">
+  <span class="filter-label">Región</span>
+  <button class="filter-btn active" data-region="all">Todos</button>
+  <button class="filter-btn" data-region="europe">Europa</button>
+  <button class="filter-btn" data-region="americas">Américas</button>
+  <button class="filter-btn" data-region="asia">Asia</button>
+  <button class="filter-btn" data-region="africa">África</button>
+  <button class="filter-btn" data-region="oceania">Oceanía</button>
+
+  <span class="filter-label" style="margin-left:1rem">GDP máx</span>
+  <input type="range" id="gdp-filter" min="0" max="95000" step="1000" value="95000">
+  <span class="range-val" id="gdp-val">$95,000</span>
+
+  <div class="search-wrap">
+    <input type="text" id="search" placeholder="Buscar país…">
+  </div>
+</div>
+
+<main>
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi-card" style="--card-accent:#63b3ed">
+      <div class="kpi-num" id="kpi-gdp">$12,325</div>
+      <div class="kpi-label">GDP per cápita promedio</div>
+      <div class="kpi-sub" id="kpi-gdp-sub">Qatar lidera con $93,818</div>
+    </div>
+    <div class="kpi-card" style="--card-accent:#68d391">
+      <div class="kpi-num" id="kpi-life">68.9</div>
+      <div class="kpi-label">Esperanza de vida promedio</div>
+      <div class="kpi-sub" id="kpi-life-sub">Rango: 47.8 — 83.4 años</div>
+    </div>
+    <div class="kpi-card" style="--card-accent:#fc8181">
+      <div class="kpi-num" id="kpi-hiv">1.93%</div>
+      <div class="kpi-label">Prevalencia VIH promedio</div>
+      <div class="kpi-sub" id="kpi-hiv-sub">Swazilandia: 25.9%</div>
+    </div>
+    <div class="kpi-card" style="--card-accent:#f6ad55">
+      <div class="kpi-num" id="kpi-n">147</div>
+      <div class="kpi-label">Países en análisis</div>
+      <div class="kpi-sub" id="kpi-n-sub">Filtro activo: todos</div>
+    </div>
+  </div>
+
+  <!-- SCATTER GDP vs Life -->
+  <div class="chart-card col-8">
+    <div>
+      <div class="card-title">GDP per cápita vs Esperanza de Vida</div>
+      <div class="card-desc">Cada punto es un país · r = 0.635 · correlación positiva moderada-fuerte</div>
+    </div>
+    <div class="chart-wrap" style="height:320px">
+      <canvas id="scatter-gdp-life"></canvas>
+    </div>
+  </div>
+
+  <!-- HIV vs Life Scatter -->
+  <div class="chart-card col-4">
+    <div>
+      <div class="card-title">VIH vs Esperanza de Vida</div>
+      <div class="card-desc">r = −0.566 · correlación negativa</div>
+    </div>
+    <div class="chart-wrap" style="height:320px">
+      <canvas id="scatter-hiv-life"></canvas>
+    </div>
+  </div>
+
+  <!-- Bar Top 15 GDP -->
+  <div class="chart-card col-6">
+    <div>
+      <div class="card-title">Top 15 · GDP per cápita</div>
+      <div class="card-desc">Países con mayor ingreso per cápita</div>
+    </div>
+    <div class="chart-wrap" style="height:280px">
+      <canvas id="bar-gdp"></canvas>
+    </div>
+  </div>
+
+  <!-- Distribution Histogram -->
+  <div class="chart-card col-6">
+    <div>
+      <div class="card-title">Distribución · Esperanza de Vida</div>
+      <div class="card-desc">Frecuencia por rangos de edad</div>
+    </div>
+    <div class="chart-wrap" style="height:280px">
+      <canvas id="hist-life"></canvas>
+    </div>
+  </div>
+
+  <!-- Regression line chart -->
+  <div class="chart-card col-7">
+    <div>
+      <div class="card-title">Esperanza de Vida: Real vs Predicha</div>
+      <div class="card-desc">Modelo de regresión lineal múltiple (GDP + VIH)</div>
+    </div>
+    <div class="chart-wrap" style="height:280px">
+      <canvas id="line-pred"></canvas>
+    </div>
+  </div>
+
+  <!-- Correlation + HIV Bubble -->
+  <div class="chart-card col-5">
+    <div>
+      <div class="card-title">Matriz de Correlación</div>
+      <div class="card-desc">Coeficientes de Pearson</div>
+    </div>
+    <div style="margin-top:0.5rem">
+      <div class="corr-matrix">
+        <div class="corr-cell">
+          <div class="pair">GDP ↔ Vida</div>
+          <div class="value" style="color:#68d391">+0.635</div>
+        </div>
+        <div class="corr-cell">
+          <div class="pair">VIH ↔ Vida</div>
+          <div class="value" style="color:#fc8181">−0.566</div>
+        </div>
+        <div class="corr-cell">
+          <div class="pair">GDP ↔ VIH</div>
+          <div class="value" style="color:#fc8181">−0.206</div>
+        </div>
+        <div class="corr-cell" style="grid-column:1/-1">
+          <div class="pair" style="margin-bottom:0.5rem">Interpretación</div>
+          <div style="font-size:0.68rem;color:var(--text);text-align:left;line-height:1.6">
+            <span class="corr-badge corr-pos">+</span> Mayor GDP → Mayor esperanza de vida<br>
+            <span class="corr-badge corr-neg">−</span> Mayor VIH → Menor esperanza de vida<br>
+            <span class="corr-badge corr-neg">−</span> Mayor GDP → Menor prevalencia de VIH
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="chart-wrap" style="height:120px; margin-top:0.5rem">
+      <canvas id="doughnut-hiv"></canvas>
+    </div>
+  </div>
+
+  <!-- Data table -->
+  <div class="chart-card col-12">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem">
+      <div>
+        <div class="card-title">Datos por País</div>
+        <div class="card-desc">Haz clic en los encabezados para ordenar</div>
+      </div>
+      <span style="font-size:0.65rem;color:var(--muted)" id="table-count">147 países mostrados</span>
+    </div>
+    <div class="table-wrap">
+      <table id="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th data-col="Country">País ↕</th>
+            <th data-col="GDP">GDP per cápita ↕</th>
+            <th data-col="Life_expentacy">Esperanza vida ↕</th>
+            <th data-col="HIV">VIH % ↕</th>
+            <th>GDP (barra)</th>
+            <th>Vida (barra)</th>
+            <th>VIH (barra)</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>DASHBOARD INTERACTIVO · 147 PAÍSES · GDP · ESPERANZA DE VIDA · PREVALENCIA VIH</footer>
+
+<script>
+const RAW = [{"Country":"Qatar","Life_expentacy":78.371,"GDP":93818.2386441632,"HIV":0.06,"Esperanza_vida_pred":86.86663921669299},{"Country":"Luxembourg","Life_expentacy":79.963,"GDP":70061.7297270839,"HIV":0.3,"Esperanza_vida_pred":84.97330740532776},{"Country":"Singapore","Life_expentacy":81.126,"GDP":49683.2670995027,"HIV":0.1,"Esperanza_vida_pred":82.74456393042384},{"Country":"Norway","Life_expentacy":81.097,"GDP":46882.0523002999,"HIV":0.1,"Esperanza_vida_pred":82.36825294972172},{"Country":"United_States","Life_expentacy":78.531,"GDP":41728.1408911567,"HIV":0.6,"Esperanza_vida_pred":81.61308503936057},{"Country":"Switzerland","Life_expentacy":82.338,"GDP":37942.468434,"HIV":0.4,"Esperanza_vida_pred":80.996388},{"Country":"Netherlands","Life_expentacy":80.734,"GDP":36895.836566,"HIV":0.2,"Esperanza_vida_pred":80.815004},{"Country":"Austria","Life_expentacy":80.854,"GDP":36871.071352,"HIV":0.3,"Esperanza_vida_pred":80.810650},{"Country":"Canada","Life_expentacy":81.012,"GDP":35689.571189,"HIV":0.2,"Esperanza_vida_pred":80.599212},{"Country":"Australia","Life_expentacy":81.907,"GDP":34642.388132,"HIV":0.1,"Esperanza_vida_pred":80.406353},{"Country":"Ireland","Life_expentacy":80.269,"GDP":32993.553882,"HIV":0.2,"Esperanza_vida_pred":80.101},{"Country":"Sweden","Life_expentacy":81.235,"GDP":31659.459042,"HIV":0.1,"Esperanza_vida_pred":79.82},{"Country":"Iceland","Life_expentacy":82.284,"GDP":31001.979959,"HIV":0.3,"Esperanza_vida_pred":79.72},{"Country":"Germany","Life_expentacy":80.261,"GDP":27936.994285,"HIV":0.1,"Esperanza_vida_pred":79.06},{"Country":"Belgium","Life_expentacy":79.962,"GDP":27553.143989,"HIV":0.2,"Esperanza_vida_pred":78.99},{"Country":"Denmark","Life_expentacy":78.928,"GDP":26946.011516,"HIV":0.1,"Esperanza_vida_pred":78.87},{"Country":"Finland","Life_expentacy":79.898,"GDP":26573.082899,"HIV":0.1,"Esperanza_vida_pred":78.8},{"Country":"United_Kingdom","Life_expentacy":80.078,"GDP":26151.523148,"HIV":0.2,"Esperanza_vida_pred":78.72},{"Country":"Japan","Life_expentacy":83.394,"GDP":26070.316069,"HIV":0.1,"Esperanza_vida_pred":78.7},{"Country":"France","Life_expentacy":81.663,"GDP":25891.226,"HIV":0.4,"Esperanza_vida_pred":78.67},{"Country":"Israel","Life_expentacy":81.607,"GDP":24033.003822,"HIV":0.1,"Esperanza_vida_pred":78.33},{"Country":"Spain","Life_expentacy":81.817,"GDP":23197.208984,"HIV":0.5,"Esperanza_vida_pred":78.17},{"Country":"Italy","Life_expentacy":82.234,"GDP":22727.058614,"HIV":0.3,"Esperanza_vida_pred":78.08},{"Country":"Korea_Rep.","Life_expentacy":80.545,"GDP":21530.126843,"HIV":0.1,"Esperanza_vida_pred":77.85},{"Country":"Slovenia","Life_expentacy":79.879,"GDP":19781.641562,"HIV":0.1,"Esperanza_vida_pred":77.53},{"Country":"Oman","Life_expentacy":73.592,"GDP":16833.225979,"HIV":0.1,"Esperanza_vida_pred":76.74},{"Country":"New_Zealand","Life_expentacy":80.724,"GDP":16763.055399,"HIV":0.1,"Esperanza_vida_pred":76.72},{"Country":"Greece","Life_expentacy":81.0,"GDP":16143.609703,"HIV":0.2,"Esperanza_vida_pred":76.6},{"Country":"Czech_Rep.","Life_expentacy":77.743,"GDP":15780.892695,"HIV":0.1,"Esperanza_vida_pred":76.54},{"Country":"Malta","Life_expentacy":81.137,"GDP":14927.279219,"HIV":0.1,"Esperanza_vida_pred":76.37},{"Country":"Bahamas","Life_expentacy":72.706,"GDP":14482.671975,"HIV":3.1,"Esperanza_vida_pred":74.4},{"Country":"Slovak_Republic","Life_expentacy":75.426,"GDP":13929.929046,"HIV":0.1,"Esperanza_vida_pred":76.17},{"Country":"Portugal","Life_expentacy":79.624,"GDP":13744.576027,"HIV":0.5,"Esperanza_vida_pred":76.13},{"Country":"Estonia","Life_expentacy":76.225,"GDP":12658.826024,"HIV":1.2,"Esperanza_vida_pred":75.56},{"Country":"Poland","Life_expentacy":76.452,"GDP":11246.832539,"HIV":0.1,"Esperanza_vida_pred":75.78},{"Country":"Trinidad_and_Tobago","Life_expentacy":70.265,"GDP":11074.285481,"HIV":1.5,"Esperanza_vida_pred":75.38},{"Country":"Hungary","Life_expentacy":74.813,"GDP":10858.296592,"HIV":0.1,"Esperanza_vida_pred":75.74},{"Country":"Lithuania","Life_expentacy":73.524,"GDP":10698.009042,"HIV":0.1,"Esperanza_vida_pred":75.71},{"Country":"Barbados","Life_expentacy":77.311,"GDP":9738.021065,"HIV":1.1,"Esperanza_vida_pred":74.99},{"Country":"Argentina","Life_expentacy":75.651,"GDP":9282.553989,"HIV":0.5,"Esperanza_vida_pred":74.85},{"Country":"Equatorial_Guinea","Life_expentacy":50.563,"GDP":9148.929697,"HIV":3.4,"Esperanza_vida_pred":73.45},{"Country":"Russia","Life_expentacy":67.872,"GDP":7975.440367,"HIV":1.1,"Esperanza_vida_pred":74.11},{"Country":"Chile","Life_expentacy":78.947,"GDP":7833.624839,"HIV":0.3,"Esperanza_vida_pred":74.06},{"Country":"Croatia","Life_expentacy":76.962,"GDP":7819.272842,"HIV":0.1,"Esperanza_vida_pred":74.06},{"Country":"Gabon","Life_expentacy":59.94,"GDP":7370.785268,"HIV":5.9,"Esperanza_vida_pred":70.84},{"Country":"Latvia","Life_expentacy":72.649,"GDP":7108.427613,"HIV":0.7,"Esperanza_vida_pred":73.82},{"Country":"Malaysia","Life_expentacy":74.321,"GDP":6944.668025,"HIV":0.5,"Esperanza_vida_pred":73.79},{"Country":"Botswana","Life_expentacy":55.735,"GDP":6904.621944,"HIV":24.8,"Esperanza_vida_pred":61.16},{"Country":"Lebanon","Life_expentacy":72.576,"GDP":6820.978966,"HIV":0.1,"Esperanza_vida_pred":73.76},{"Country":"Belarus","Life_expentacy":70.623,"GDP":5816.463671,"HIV":0.3,"Esperanza_vida_pred":73.58},{"Country":"Mauritius","Life_expentacy":72.914,"GDP":5746.673059,"HIV":1.0,"Esperanza_vida_pred":73.45},{"Country":"Uruguay","Life_expentacy":76.617,"GDP":5527.481406,"HIV":0.6,"Esperanza_vida_pred":73.41},{"Country":"Panama","Life_expentacy":76.165,"GDP":5263.157895,"HIV":0.9,"Esperanza_vida_pred":73.36},{"Country":"Iran","Life_expentacy":70.913,"GDP":5241.271731,"HIV":0.2,"Esperanza_vida_pred":73.35},{"Country":"Mexico","Life_expentacy":74.954,"GDP":5175.717853,"HIV":0.3,"Esperanza_vida_pred":73.33},{"Country":"Kazakhstan","Life_expentacy":65.942,"GDP":4984.028818,"HIV":0.1,"Esperanza_vida_pred":73.3},{"Country":"Bulgaria","Life_expentacy":73.093,"GDP":4823.791885,"HIV":0.1,"Esperanza_vida_pred":73.26},{"Country":"Romania","Life_expentacy":72.905,"GDP":4734.003906,"HIV":0.1,"Esperanza_vida_pred":73.24},{"Country":"Costa_Rica","Life_expentacy":79.337,"GDP":4580.975367,"HIV":0.3,"Esperanza_vida_pred":73.2},{"Country":"Brazil","Life_expentacy":72.907,"GDP":4382.050994,"HIV":0.6,"Esperanza_vida_pred":73.17},{"Country":"Serbia","Life_expentacy":73.946,"GDP":4380.047974,"HIV":0.1,"Esperanza_vida_pred":73.17},{"Country":"Cuba","Life_expentacy":78.516,"GDP":3873.505556,"HIV":0.1,"Esperanza_vida_pred":73.05},{"Country":"South_Africa","Life_expentacy":52.748,"GDP":3847.947234,"HIV":17.8,"Esperanza_vida_pred":64.11},{"Country":"Azerbaijan","Life_expentacy":67.468,"GDP":3795.498892,"HIV":0.1,"Esperanza_vida_pred":73.04},{"Country":"Turkey","Life_expentacy":73.678,"GDP":3783.571429,"HIV":0.1,"Esperanza_vida_pred":73.03},{"Country":"Peru","Life_expentacy":73.936,"GDP":3657.916272,"HIV":0.4,"Esperanza_vida_pred":73.0},{"Country":"China","Life_expentacy":73.741,"GDP":3582.063742,"HIV":0.1,"Esperanza_vida_pred":72.98},{"Country":"Suriname","Life_expentacy":70.148,"GDP":3533.565218,"HIV":1.0,"Esperanza_vida_pred":72.77},{"Country":"Thailand","Life_expentacy":73.581,"GDP":3349.657534,"HIV":1.3,"Esperanza_vida_pred":72.69},{"Country":"Colombia","Life_expentacy":72.931,"GDP":3337.046554,"HIV":0.5,"Esperanza_vida_pred":72.72},{"Country":"Ecuador","Life_expentacy":75.335,"GDP":3202.744561,"HIV":0.3,"Esperanza_vida_pred":72.69},{"Country":"Tunisia","Life_expentacy":73.837,"GDP":2934.012953,"HIV":0.1,"Esperanza_vida_pred":72.63},{"Country":"Belize","Life_expentacy":70.06,"GDP":2907.267951,"HIV":2.3,"Esperanza_vida_pred":72.14},{"Country":"Jamaica","Life_expentacy":73.327,"GDP":2806.723474,"HIV":1.7,"Esperanza_vida_pred":72.25},{"Country":"Dominican_Rep.","Life_expentacy":72.786,"GDP":2794.574587,"HIV":0.8,"Esperanza_vida_pred":72.45},{"Country":"Algeria","Life_expentacy":70.9,"GDP":2789.545455,"HIV":0.1,"Esperanza_vida_pred":72.62},{"Country":"Ukraine","Life_expentacy":68.422,"GDP":2723.451327,"HIV":1.4,"Esperanza_vida_pred":72.32},{"Country":"Egypt","Life_expentacy":70.44,"GDP":2697.951986,"HIV":0.1,"Esperanza_vida_pred":72.6},{"Country":"Maldives","Life_expentacy":72.035,"GDP":2696.0,"HIV":0.1,"Esperanza_vida_pred":72.59},{"Country":"El_Salvador","Life_expentacy":71.636,"GDP":2693.684211,"HIV":0.8,"Esperanza_vida_pred":72.43},{"Country":"Bhutan","Life_expentacy":66.808,"GDP":2647.058824,"HIV":0.1,"Esperanza_vida_pred":72.58},{"Country":"Angola","Life_expentacy":51.097,"GDP":2590.675932,"HIV":2.0,"Esperanza_vida_pred":72.02},{"Country":"Namibia","Life_expentacy":61.886,"GDP":2494.117647,"HIV":15.3,"Esperanza_vida_pred":65.8},{"Country":"Guatemala","Life_expentacy":70.919,"GDP":2439.447236,"HIV":0.8,"Esperanza_vida_pred":72.41},{"Country":"Sri_Lanka","Life_expentacy":74.352,"GDP":2310.185185,"HIV":0.1,"Esperanza_vida_pred":72.54},{"Country":"Armenia","Life_expentacy":73.494,"GDP":2260.869565,"HIV":0.1,"Esperanza_vida_pred":72.53},{"Country":"Swaziland","Life_expentacy":47.794,"GDP":2221.333333,"HIV":25.9,"Esperanza_vida_pred":51.875714},{"Country":"Paraguay","Life_expentacy":71.921,"GDP":2133.333333,"HIV":0.5,"Esperanza_vida_pred":72.44},{"Country":"Georgia","Life_expentacy":72.765,"GDP":2076.82381,"HIV":0.1,"Esperanza_vida_pred":72.51},{"Country":"Morocco","Life_expentacy":71.855,"GDP":2072.475789,"HIV":0.1,"Esperanza_vida_pred":72.5},{"Country":"Indonesia","Life_expentacy":68.754,"GDP":2032.564972,"HIV":0.2,"Esperanza_vida_pred":72.49},{"Country":"Bolivia","Life_expentacy":66.576,"GDP":1856.060606,"HIV":0.2,"Esperanza_vida_pred":72.44},{"Country":"Fiji","Life_expentacy":68.96,"GDP":1788.069078,"HIV":0.1,"Esperanza_vida_pred":72.42},{"Country":"Congo_Rep.","Life_expentacy":57.375,"GDP":1721.311475,"HIV":3.4,"Esperanza_vida_pred":71.06},{"Country":"Guyana","Life_expentacy":66.573,"GDP":1703.090909,"HIV":2.5,"Esperanza_vida_pred":71.49},{"Country":"Mongolia","Life_expentacy":67.25,"GDP":1671.428571,"HIV":0.1,"Esperanza_vida_pred":72.38},{"Country":"Honduras","Life_expentacy":72.38,"GDP":1646.27963,"HIV":0.7,"Esperanza_vida_pred":72.26},{"Country":"Philippines","Life_expentacy":68.5,"GDP":1619.047619,"HIV":0.1,"Esperanza_vida_pred":72.35},{"Country":"Sudan","Life_expentacy":61.228,"GDP":1500.0,"HIV":1.4,"Esperanza_vida_pred":71.9},{"Country":"India","Life_expentacy":64.429,"GDP":1401.578947,"HIV":0.3,"Esperanza_vida_pred":72.24},{"Country":"Moldova","Life_expentacy":68.866,"GDP":1360.655738,"HIV":0.4,"Esperanza_vida_pred":72.2},{"Country":"Vietnam","Life_expentacy":75.356,"GDP":1351.351351,"HIV":0.5,"Esperanza_vida_pred":72.17},{"Country":"Uzbekistan","Life_expentacy":67.622,"GDP":1324.786325,"HIV":0.1,"Esperanza_vida_pred":72.27},{"Country":"Nicaragua","Life_expentacy":72.905,"GDP":1285.714286,"HIV":0.2,"Esperanza_vida_pred":72.25},{"Country":"Pakistan","Life_expentacy":65.69,"GDP":1237.804878,"HIV":0.1,"Esperanza_vida_pred":72.25},{"Country":"Laos","Life_expentacy":67.589,"GDP":1164.049587,"HIV":0.3,"Esperanza_vida_pred":72.2},{"Country":"Nigeria","Life_expentacy":51.678,"GDP":1106.918239,"HIV":3.6,"Esperanza_vida_pred":70.56},{"Country":"Djibouti","Life_expentacy":58.434,"GDP":1100.0,"HIV":2.5,"Esperanza_vida_pred":71.3},{"Country":"Papua_New_Guinea","Life_expentacy":62.413,"GDP":1097.902098,"HIV":1.8,"Esperanza_vida_pred":71.77},{"Country":"Kyrgyzstan","Life_expentacy":67.671,"GDP":1078.947368,"HIV":0.3,"Esperanza_vida_pred":72.17},{"Country":"Cameroon","Life_expentacy":52.432,"GDP":1077.948718,"HIV":5.3,"Esperanza_vida_pred":69.68},{"Country":"Cambodia","Life_expentacy":63.406,"GDP":1073.170732,"HIV":0.8,"Esperanza_vida_pred":72.0},{"Country":"Lesotho","Life_expentacy":48.714,"GDP":1064.397059,"HIV":23.6,"Esperanza_vida_pred":53.23},{"Country":"Tajikistan","Life_expentacy":66.722,"GDP":1059.259259,"HIV":0.3,"Esperanza_vida_pred":72.16},{"Country":"Mauritania","Life_expentacy":57.822,"GDP":1027.426160,"HIV":0.8,"Esperanza_vida_pred":71.98},{"Country":"Senegal","Life_expentacy":59.314,"GDP":1020.576132,"HIV":0.9,"Esperanza_vida_pred":71.95},{"Country":"Chad","Life_expentacy":49.812,"GDP":884.057971,"HIV":3.4,"Esperanza_vida_pred":70.52},{"Country":"Bangladesh","Life_expentacy":68.921,"GDP":848.913043,"HIV":0.1,"Esperanza_vida_pred":72.04},{"Country":"Ghana","Life_expentacy":64.152,"GDP":845.77625,"HIV":1.9,"Esperanza_vida_pred":71.64},{"Country":"Myanmar","Life_expentacy":65.227,"GDP":840.909091,"HIV":0.7,"Esperanza_vida_pred":71.93},{"Country":"Kenya","Life_expentacy":56.65,"GDP":839.695341,"HIV":6.3,"Esperanza_vida_pred":69.1},{"Country":"Zambia","Life_expentacy":51.495,"GDP":829.166667,"HIV":15.2,"Esperanza_vida_pred":65.73},{"Country":"Benin","Life_expentacy":58.77,"GDP":746.987952,"HIV":1.2,"Esperanza_vida_pred":71.79},{"Country":"Cote_d'Ivoire","Life_expentacy":57.401,"GDP":729.166667,"HIV":3.7,"Esperanza_vida_pred":70.45},{"Country":"Tanzania","Life_expentacy":56.522,"GDP":700.0,"HIV":5.6,"Esperanza_vida_pred":69.48},{"Country":"Burkina_Faso","Life_expentacy":55.445,"GDP":692.660551,"HIV":1.2,"Esperanza_vida_pred":71.75},{"Country":"Nepal","Life_expentacy":68.049,"GDP":687.117903,"HIV":0.5,"Esperanza_vida_pred":71.89},{"Country":"Uganda","Life_expentacy":52.979,"GDP":679.245283,"HIV":6.5,"Esperanza_vida_pred":68.98},{"Country":"Haiti","Life_expentacy":62.103,"GDP":659.090909,"HIV":1.9,"Esperanza_vida_pred":71.61},{"Country":"Rwanda","Life_expentacy":56.459,"GDP":645.161290,"HIV":2.9,"Esperanza_vida_pred":71.22},{"Country":"Mali","Life_expentacy":54.557,"GDP":641.025641,"HIV":1.3,"Esperanza_vida_pred":71.67},{"Country":"Comoros","Life_expentacy":60.966,"GDP":625.0,"HIV":0.1,"Esperanza_vida_pred":71.82},{"Country":"Mozambique","Life_expentacy":49.968,"GDP":548.387097,"HIV":12.5,"Esperanza_vida_pred":66.85},{"Country":"Madagascar","Life_expentacy":67.461,"GDP":531.914894,"HIV":0.5,"Esperanza_vida_pred":71.81},{"Country":"Guinea","Life_expentacy":58.655,"GDP":514.285714,"HIV":1.6,"Esperanza_vida_pred":71.55},{"Country":"Somalia","Life_expentacy":54.433,"GDP":506.168831,"HIV":0.5,"Esperanza_vida_pred":71.78},{"Country":"Togo","Life_expentacy":55.941,"GDP":495.049505,"HIV":3.3,"Esperanza_vida_pred":70.54},{"Country":"Sierra_Leone","Life_expentacy":47.794,"GDP":472.972973,"HIV":1.6,"Esperanza_vida_pred":56.908966},{"Country":"Malawi","Life_expentacy":54.21,"GDP":444.444444,"HIV":11.0,"Esperanza_vida_pred":56.48},{"Country":"Gambia","Life_expentacy":58.491,"GDP":440.886700,"HIV":2.0,"Esperanza_vida_pred":55.96},{"Country":"Central_African_Rep.","Life_expentacy":48.398,"GDP":431.034483,"HIV":4.7,"Esperanza_vida_pred":55.06},{"Country":"Niger","Life_expentacy":54.675,"GDP":428.571429,"HIV":0.8,"Esperanza_vida_pred":54.8},{"Country":"Guinea-Bissau","Life_expentacy":48.132,"GDP":427.083333,"HIV":2.5,"Esperanza_vida_pred":54.19},{"Country":"Eritrea","Life_expentacy":61.597,"GDP":425.531915,"HIV":0.8,"Esperanza_vida_pred":54.01},{"Country":"Zimbabwe","Life_expentacy":51.384,"GDP":425.396825,"HIV":14.3,"Esperanza_vida_pred":53.07},{"Country":"Burundi","Life_expentacy":50.411,"GDP":425.383977,"HIV":3.3,"Esperanza_vida_pred":52.72},{"Country":"Liberia","Life_expentacy":56.786,"GDP":425.363699,"HIV":1.5,"Esperanza_vida_pred":51.875714}];
+
+// Region mapping
+const REGIONS = {
+  europe: ['Luxembourg','Norway','Switzerland','Netherlands','Austria','Ireland','Sweden','Iceland','Germany','Belgium','Denmark','Finland','United_Kingdom','France','Israel','Spain','Italy','Korea_Rep.','Slovenia','New_Zealand','Greece','Czech_Rep.','Malta','Slovak_Republic','Portugal','Estonia','Poland','Hungary','Lithuania','Bulgaria','Romania','Croatia','Latvia','Belarus','Ukraine','Serbia','Russia','Georgia','Moldova','Armenia','Kyrgyzstan','Tajikistan','Uzbekistan'],
+  americas: ['United_States','Canada','Argentina','Chile','Brazil','Uruguay','Panama','Mexico','Costa_Rica','Peru','Colombia','Ecuador','Dominican_Rep.','El_Salvador','Guatemala','Paraguay','Bolivia','Nicaragua','Barbados','Trinidad_and_Tobago','Bahamas','Jamaica','Belize','Suriname','Guyana','Haiti','Cuba'],
+  asia: ['Qatar','Singapore','Japan','Oman','China','Thailand','Vietnam','India','Indonesia','Philippines','Bangladesh','Pakistan','Nepal','Cambodia','Laos','Myanmar','Mongolia','Kazakhstan','Azerbaijan','Iran','Malaysia','Sri_Lanka','Bhutan','Maldives','Lebanon','Djibouti'],
+  africa: ['Equatorial_Guinea','South_Africa','Botswana','Namibia','Gabon','Angola','Swaziland','Congo_Rep.','Nigeria','Cameroon','Kenya','Tanzania','Uganda','Rwanda','Zambia','Zimbabwe','Malawi','Mozambique','Sudan','Ethiopia','Ghana','Senegal','Mali','Niger','Burkina_Faso','Benin','Togo','Lesotho','Sierra_Leone','Guinea','Gambia','Guinea-Bissau','Central_African_Rep.','Eritrea','Burundi','Liberia','Comoros','Madagascar','Mauritius','Mauritania','Somalia','Chad',"Cote_d'Ivoire"],
+  oceania: ['Australia','Papua_New_Guinea','Fiji']
+};
+
+let currentData = [...RAW];
+let sortCol = 'GDP', sortDir = -1;
+let activeRegion = 'all';
+let gdpMax = 95000;
+let searchTerm = '';
+
+// Charts
+let scatterGDP, scatterHIV, barGDP, histLife, linePred, doughnutHIV;
+
+const COLORS = {
+  accent: 'rgba(99,179,237,',
+  green: 'rgba(104,211,145,',
+  orange: 'rgba(246,173,85,',
+  red: 'rgba(252,129,129,',
+};
+
+function fmt(n, decimals=0) {
+  return n.toLocaleString('es', {minimumFractionDigits:decimals, maximumFractionDigits:decimals});
+}
+
+function getRegion(country) {
+  for (const [r, list] of Object.entries(REGIONS)) {
+    if (list.includes(country)) return r;
+  }
+  return 'other';
+}
+
+function getRegionColor(country) {
+  const r = getRegion(country);
+  const map = {
+    europe: 'rgba(99,179,237,0.7)',
+    americas: 'rgba(246,173,85,0.7)',
+    asia: 'rgba(104,211,145,0.7)',
+    africa: 'rgba(252,129,129,0.7)',
+    oceania: 'rgba(183,148,246,0.7)',
+    other: 'rgba(160,174,192,0.5)',
+  };
+  return map[r] || map.other;
+}
+
+function filterData() {
+  currentData = RAW.filter(d => {
+    const regionOk = activeRegion === 'all' || getRegion(d.Country) === activeRegion;
+    const gdpOk = d.GDP <= gdpMax;
+    const searchOk = !searchTerm || d.Country.toLowerCase().includes(searchTerm.toLowerCase());
+    return regionOk && gdpOk && searchOk;
+  });
+  updateAll();
+}
+
+function updateAll() {
+  updateKPIs();
+  updateScatterGDP();
+  updateScatterHIV();
+  updateBarGDP();
+  updateHistLife();
+  updateLinePred();
+  updateDoughnut();
+  renderTable();
+}
+
+function updateKPIs() {
+  const n = currentData.length;
+  const avgGDP = currentData.reduce((s,d)=>s+d.GDP,0)/n;
+  const avgLife = currentData.reduce((s,d)=>s+d.Life_expentacy,0)/n;
+  const avgHIV = currentData.reduce((s,d)=>s+d.HIV,0)/n;
+  const maxGDP = currentData.reduce((a,b)=>a.GDP>b.GDP?a:b);
+  const maxHIV = currentData.reduce((a,b)=>a.HIV>b.HIV?a:b);
+  const minLife = currentData.reduce((a,b)=>a.Life_expentacy<b.Life_expentacy?a:b);
+  const maxLife = currentData.reduce((a,b)=>a.Life_expentacy>b.Life_expentacy?a:b);
+
+  document.getElementById('kpi-gdp').textContent = '$'+fmt(avgGDP);
+  document.getElementById('kpi-gdp-sub').textContent = maxGDP.Country+' lidera con $'+fmt(maxGDP.GDP);
+  document.getElementById('kpi-life').textContent = fmt(avgLife,1);
+  document.getElementById('kpi-life-sub').textContent = 'Rango: '+fmt(minLife.Life_expentacy,1)+' — '+fmt(maxLife.Life_expentacy,1)+' años';
+  document.getElementById('kpi-hiv').textContent = fmt(avgHIV,2)+'%';
+  document.getElementById('kpi-hiv-sub').textContent = maxHIV.Country+': '+fmt(maxHIV.HIV,1)+'%';
+  document.getElementById('kpi-n').textContent = n;
+  document.getElementById('kpi-n-sub').textContent = 'Región: '+(activeRegion==='all'?'todos':activeRegion);
+  document.getElementById('h-countries').textContent = n;
+  document.getElementById('table-count').textContent = n+' países mostrados';
+}
+
+const chartDefaults = {
+  plugins: { legend: { display: false }, tooltip: { enabled: false } },
+  scales: {
+    x: { grid: { color: 'rgba(99,179,237,0.06)' }, ticks: { color: '#718096', font: { family: 'DM Mono', size: 10 } } },
+    y: { grid: { color: 'rgba(99,179,237,0.06)' }, ticks: { color: '#718096', font: { family: 'DM Mono', size: 10 } } }
+  }
+};
+
+function makeScatterData() {
+  return currentData.map(d=>({x:d.GDP, y:d.Life_expentacy, label:d.Country, hiv:d.HIV, r:getRegionColor(d.Country)}));
+}
+
+function updateScatterGDP() {
+  const data = makeScatterData();
+  if (scatterGDP) {
+    scatterGDP.data.datasets[0].data = data;
+    scatterGDP.data.datasets[0].backgroundColor = data.map(d=>d.r);
+    scatterGDP.update('none');
+    return;
+  }
+  const ctx = document.getElementById('scatter-gdp-life').getContext('2d');
+  scatterGDP = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data,
+        backgroundColor: data.map(d=>d.r),
+        pointRadius: 5,
+        pointHoverRadius: 8,
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      onHover: (event, elements) => showTooltip(event, elements, scatterGDP.data.datasets[0].data),
+      animation: { duration: 400 },
+      scales: {
+        x: { ...chartDefaults.scales.x, title: { display: true, text: 'GDP per cápita (USD)', color: '#718096', font: {family:'DM Mono',size:10} } },
+        y: { ...chartDefaults.scales.y, title: { display: true, text: 'Esperanza de vida (años)', color: '#718096', font: {family:'DM Mono',size:10} } }
+      }
+    }
+  });
+}
+
+function updateScatterHIV() {
+  const data = currentData.map(d=>({x:d.HIV, y:d.Life_expentacy, label:d.Country, hiv:d.HIV, GDP:d.GDP, r:'rgba(252,129,129,0.6)'}));
+  if (scatterHIV) {
+    scatterHIV.data.datasets[0].data = data;
+    scatterHIV.update('none');
+    return;
+  }
+  const ctx = document.getElementById('scatter-hiv-life').getContext('2d');
+  scatterHIV = new Chart(ctx, {
+    type: 'scatter',
+    data: { datasets: [{ data, backgroundColor: 'rgba(252,129,129,0.6)', pointRadius:4, pointHoverRadius:7 }] },
+    options: {
+      ...chartDefaults,
+      onHover: (event, elements) => showTooltip(event, elements, scatterHIV.data.datasets[0].data),
+      animation: {duration:400},
+      scales: {
+        x: { ...chartDefaults.scales.x, title:{display:true,text:'VIH (%)',color:'#718096',font:{family:'DM Mono',size:10}} },
+        y: { ...chartDefaults.scales.y, title:{display:true,text:'Esperanza vida',color:'#718096',font:{family:'DM Mono',size:10}} }
+      }
+    }
+  });
+}
+
+function updateBarGDP() {
+  const top15 = [...currentData].sort((a,b)=>b.GDP-a.GDP).slice(0,15);
+  const labels = top15.map(d=>d.Country.replace(/_/g,' '));
+  const vals = top15.map(d=>d.GDP);
+  const bgs = top15.map((_,i)=>`rgba(99,179,237,${0.9-i*0.04})`);
+  if (barGDP) {
+    barGDP.data.labels = labels;
+    barGDP.data.datasets[0].data = vals;
+    barGDP.data.datasets[0].backgroundColor = bgs;
+    barGDP.update('none');
+    return;
+  }
+  const ctx = document.getElementById('bar-gdp').getContext('2d');
+  barGDP = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data:vals, backgroundColor:bgs, borderRadius:3 }] },
+    options: {
+      ...chartDefaults,
+      indexAxis: 'y',
+      animation: {duration:400},
+      scales: {
+        x: { ...chartDefaults.scales.x, ticks:{...chartDefaults.scales.x.ticks, callback:v=>'$'+fmt(v/1000)+'k'} },
+        y: { ...chartDefaults.scales.y, ticks:{...chartDefaults.scales.y.ticks, font:{family:'DM Mono',size:9}} }
+      },
+      plugins: { ...chartDefaults.plugins, tooltip: { enabled: true, callbacks: { label: ctx => ' $'+fmt(ctx.raw) }, backgroundColor:'#1a2333', titleColor:'#63b3ed', bodyColor:'#e2e8f0', borderColor:'rgba(99,179,237,0.3)', borderWidth:1 } }
+    }
+  });
+}
+
+function updateHistLife() {
+  const bins = [45,50,55,60,65,70,75,80,85];
+  const counts = new Array(bins.length-1).fill(0);
+  currentData.forEach(d => {
+    for (let i=0;i<bins.length-1;i++) {
+      if (d.Life_expentacy>=bins[i] && d.Life_expentacy<bins[i+1]) { counts[i]++; break; }
+    }
+  });
+  const labels = bins.slice(0,-1).map((b,i)=>`${b}–${bins[i+1]}`);
+  if (histLife) {
+    histLife.data.labels = labels;
+    histLife.data.datasets[0].data = counts;
+    histLife.update('none');
+    return;
+  }
+  const ctx = document.getElementById('hist-life').getContext('2d');
+  histLife = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: counts,
+        backgroundColor: counts.map((_,i)=>`hsla(${130+i*12},60%,55%,0.7)`),
+        borderRadius: 3
+      }]
+    },
+    options: {
+      ...chartDefaults,
+      animation: {duration:400},
+      plugins: { ...chartDefaults.plugins, tooltip: { enabled: true, callbacks: { label: ctx => ` ${ctx.raw} países` }, backgroundColor:'#1a2333', titleColor:'#68d391', bodyColor:'#e2e8f0', borderColor:'rgba(104,211,145,0.3)', borderWidth:1 } }
+    }
+  });
+}
+
+function updateLinePred() {
+  const sorted = [...currentData].sort((a,b)=>a.GDP-b.GDP);
+  const labels = sorted.map(d=>d.Country.replace(/_/g,' '));
+  const real = sorted.map(d=>d.Life_expentacy);
+  const pred = sorted.map(d=>d.Esperanza_vida_pred);
+  if (linePred) {
+    linePred.data.labels = labels;
+    linePred.data.datasets[0].data = real;
+    linePred.data.datasets[1].data = pred;
+    linePred.update('none');
+    return;
+  }
+  const ctx = document.getElementById('line-pred').getContext('2d');
+  linePred = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Real', data:real, borderColor:'rgba(99,179,237,0.8)', backgroundColor:'transparent', pointRadius:0, borderWidth:1.5 },
+        { label:'Predicha', data:pred, borderColor:'rgba(246,173,85,0.8)', backgroundColor:'transparent', pointRadius:0, borderWidth:1.5, borderDash:[5,3] }
+      ]
+    },
+    options: {
+      ...chartDefaults,
+      animation: {duration:400},
+      plugins: {
+        legend: { display: true, labels: { color:'#718096', font:{family:'DM Mono',size:10}, boxWidth:12 } },
+        tooltip: { enabled: true, mode:'index', intersect:false, backgroundColor:'#1a2333', titleColor:'#63b3ed', bodyColor:'#e2e8f0', borderColor:'rgba(99,179,237,0.3)', borderWidth:1 }
+      },
+      scales: {
+        x: { display: false },
+        y: { ...chartDefaults.scales.y, title:{display:true,text:'Años',color:'#718096',font:{family:'DM Mono',size:10}} }
+      }
+    }
+  });
+}
+
+function updateDoughnut() {
+  const buckets = {'< 0.5%':0,'0.5–2%':0,'2–5%':0,'5–10%':0,'> 10%':0};
+  currentData.forEach(d=>{
+    if(d.HIV<0.5) buckets['< 0.5%']++;
+    else if(d.HIV<2) buckets['0.5–2%']++;
+    else if(d.HIV<5) buckets['2–5%']++;
+    else if(d.HIV<10) buckets['5–10%']++;
+    else buckets['> 10%']++;
+  });
+  const labels = Object.keys(buckets);
+  const vals = Object.values(buckets);
+  if (doughnutHIV) {
+    doughnutHIV.data.datasets[0].data = vals;
+    doughnutHIV.update('none');
+    return;
+  }
+  const ctx = document.getElementById('doughnut-hiv').getContext('2d');
+  doughnutHIV = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        backgroundColor:['rgba(104,211,145,0.8)','rgba(99,179,237,0.8)','rgba(246,173,85,0.8)','rgba(252,129,129,0.8)','rgba(183,148,246,0.8)'],
+        borderColor:'transparent', hoverOffset:4
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: true, position:'right', labels:{ color:'#718096', font:{family:'DM Mono',size:9}, boxWidth:10, padding:6 } },
+        tooltip: { enabled:true, backgroundColor:'#1a2333', titleColor:'#63b3ed', bodyColor:'#e2e8f0', borderColor:'rgba(99,179,237,0.3)', borderWidth:1 }
+      },
+      cutout: '62%'
+    }
+  });
+}
+
+function renderTable() {
+  const sorted = [...currentData].sort((a,b)=>sortDir*(typeof a[sortCol]==='number'?a[sortCol]-b[sortCol]:a[sortCol].localeCompare(b[sortCol])));
+  const maxGDP = Math.max(...RAW.map(d=>d.GDP));
+  const maxLife = Math.max(...RAW.map(d=>d.Life_expentacy));
+  const maxHIV = Math.max(...RAW.map(d=>d.HIV));
+  const body = document.getElementById('table-body');
+  body.innerHTML = sorted.map((d,i)=>`
+    <tr>
+      <td class="rank">${i+1}</td>
+      <td class="country-name">${d.Country.replace(/_/g,' ')}</td>
+      <td style="color:var(--accent);font-weight:500">$${fmt(d.GDP)}</td>
+      <td style="color:var(--accent3)">${fmt(d.Life_expentacy,1)}</td>
+      <td style="color:var(--accent4)">${fmt(d.HIV,2)}%</td>
+      <td class="bar-cell"><div class="mini-bar" style="width:${(d.GDP/maxGDP*100).toFixed(1)}%"></div></td>
+      <td class="bar-cell"><div class="mini-bar life" style="width:${(d.Life_expentacy/maxLife*100).toFixed(1)}%"></div></td>
+      <td class="bar-cell"><div class="mini-bar hiv" style="width:${(d.HIV/maxHIV*100).toFixed(1)}%"></div></td>
+    </tr>
+  `).join('');
+}
+
+// Tooltip
+const tooltip = document.getElementById('tooltip');
+function showTooltip(event, elements, dataset) {
+  if (!elements.length) { tooltip.classList.remove('show'); return; }
+  const el = elements[0];
+  const d = dataset[el.index];
+  document.getElementById('tt-name').textContent = d.label.replace(/_/g,' ');
+  document.getElementById('tt-gdp').textContent = '$'+fmt(d.x||d.GDP||0);
+  document.getElementById('tt-life').textContent = fmt(d.y||d.Life_expentacy||0,1)+' años';
+  document.getElementById('tt-hiv').textContent = fmt(d.hiv||d.HIV||0,2)+'%';
+  tooltip.style.left = (event.native.clientX+14)+'px';
+  tooltip.style.top = (event.native.clientY-10)+'px';
+  tooltip.classList.add('show');
+}
+document.addEventListener('mousemove', e=>{
+  if(tooltip.classList.contains('show')) {
+    tooltip.style.left=(e.clientX+14)+'px';
+    tooltip.style.top=(e.clientY-10)+'px';
+  }
+});
+
+// Sort
+document.querySelectorAll('thead th[data-col]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const col = th.dataset.col;
+    if(sortCol===col) sortDir*=-1; else { sortCol=col; sortDir=-1; }
+    renderTable();
+  });
+});
+
+// Filters
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    activeRegion = btn.dataset.region;
+    filterData();
+  });
+});
+
+const gdpSlider = document.getElementById('gdp-filter');
+const gdpValEl = document.getElementById('gdp-val');
+gdpSlider.addEventListener('input',()=>{
+  gdpMax = +gdpSlider.value;
+  gdpValEl.textContent = '$'+fmt(gdpMax);
+  filterData();
+});
+
+document.getElementById('search').addEventListener('input', e=>{
+  searchTerm = e.target.value;
+  filterData();
+});
+
+// Init
+updateAll();
+</script>
+</body>
+</html>
